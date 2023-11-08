@@ -27,7 +27,7 @@ struct Node *insert(struct Node *head, int value) {
 }
 
 struct Node *applySkip(struct Node *head) {
-	if(!head->next) return head->next;
+	if(!head->next) return NULL;
 	head->twoNext = applySkip(head->next);
 	return head->next;
 }
@@ -51,7 +51,36 @@ void checkSkipConnections(struct Node *head) {
 int contains(struct Node *head, int value) {
 	if(head == NULL || head->value > value) return 0;
 	else if(head->value == value) return 1;
-	return contains(head->next, value) | contains(head->twoNext, value);
+	return contains(head->twoNext, value) || contains(head->next, value);
+}
+
+struct Node *deleteIndexPriv(struct Node *head, int index, int position) {
+	if(head == NULL) return head;
+	if(index < position) return NULL;
+	struct Node *temp;
+	if(position == index) {
+		temp = head->next;
+		free(head);
+		return temp;
+	}
+	temp = deleteIndexPriv(head->twoNext, index, position+2);
+	if(temp == NULL) {
+		temp = deleteIndexPriv(head->next, index, position+1);
+		head->next = temp;
+		if(temp) head->twoNext = temp->next;
+		else head->twoNext = NULL;
+		return head;
+	}
+	else {
+		head->twoNext = temp;
+		head->next->next = temp;
+		head->next->twoNext = temp->next;
+		return head;
+	}
+}
+
+struct Node *deleteIndex(struct Node *head, int index) {
+	return deleteIndexPriv(head, index, 0);
 }
 
 int main() {
@@ -65,5 +94,8 @@ int main() {
 	checkSkipConnections(head);
 	if(contains(head, 6)) printf("Contains!\n");
 	if(contains(head, 7)) printf("Contains!\n");
+	head = deleteIndex(head, 1);
+	checkSkipConnections(head);
+	printList(head);
 	return 0;
 }
