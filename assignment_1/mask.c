@@ -24,8 +24,14 @@ unsigned int get_net_size(struct Mask mask) {
 	return result-2;
 }
 
+unsigned int get_net_size_v2(struct Mask mask) {
+	int result = *(int *)&mask;
+	return ~result - 1;
+}
+
 int main() {
-	struct Mask test = {255, 255, 255, 248};
+	struct Mask test = {0, 0, 0, 248};
 	printf("Result = %u\n", get_net_size(test));
+	printf("Result = %u\n", get_net_size_v2(test));
 	return 0;
 }
