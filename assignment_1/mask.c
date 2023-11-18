@@ -20,17 +20,18 @@ unsigned int get_net_size(struct Mask mask) {
 	else if(mask.two != 255) { result = 2; value = mask.two; }
 	else if(mask.three != 255) { result = 1; value = mask.three; }
 	else { result = 0; value = mask.four; }
-	result = ((byte)(~value) + 1) * power(256, result);
-	return result-2;
+	result = ((byte)(~value) + 1) * power(256, result) - 1;
+	return (result>>1)<<1;
 }
 
 unsigned int get_net_size_v2(struct Mask mask) {
-	int result = *(int *)&mask;
-	return ~result - 1;
+	struct Mask temp = {mask.four, mask.three, mask.two, mask.one};
+	unsigned int result = *(int *)&temp;
+	return (~result>>1)<<1;
 }
 
 int main() {
-	struct Mask test = {0, 0, 0, 248};
+	struct Mask test = {255, 255, 255, 248};
 	printf("Result = %u\n", get_net_size(test));
 	printf("Result = %u\n", get_net_size_v2(test));
 	return 0;
