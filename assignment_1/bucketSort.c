@@ -38,12 +38,8 @@ void bucketSort(int *arr, int size, int min, int max) {
 		buckets[i] = NULL;
 	}
 	for(int i = 0; i < size; i++) {
-		int index = arr[i] / range;
-		printf("Here - %d \n", index);
-		//if(arr[i] == max && (max - min) <= (2 * max)) index--;
-		printf("Here - %d \n", index);
+		unsigned int index = arr[i] / range;
 		index -= min / range;
-		printf("Here - %d -> %d \n", arr[i], index);
 		if(index >= size) index = size-1;
 		buckets[index] = insert(buckets[index], arr[i]);
 		printList(buckets[index]);
