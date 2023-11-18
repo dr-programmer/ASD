@@ -31,15 +31,20 @@ void printList(struct Node *head) {
 	printf("\n");
 }
 
-void bucketSort(int *arr, int size, int max) {
-	unsigned int range = max / size;
+void bucketSort(int *arr, int size, int min, int max) {
+	int range = (max - min) / size;
 	struct Node *buckets[size];
 	for(int i = 0; i < size; i++) {
 		buckets[i] = NULL;
 	}
 	for(int i = 0; i < size; i++) {
-		unsigned int index = arr[i] / range;
-		if(arr[i] == max) index--;
+		int index = arr[i] / range;
+		printf("Here - %d \n", index);
+		//if(arr[i] == max && (max - min) <= (2 * max)) index--;
+		printf("Here - %d \n", index);
+		index -= min / range;
+		printf("Here - %d -> %d \n", arr[i], index);
+		if(index >= size) index = size-1;
 		buckets[index] = insert(buckets[index], arr[i]);
 		printList(buckets[index]);
 	}
@@ -59,9 +64,9 @@ void printArray(int *arr, int size) {
 }
 
 int main() {
-	int arr[] = {69, 15, 1, 13, 25, 12, 3, 26};
+	int arr[] = {69, 15, 1, -13, 23, -12, 3, 56};
 	printArray(arr, 8);
-	bucketSort(arr, 8, 69);
+	bucketSort(arr, 8, -13, 69);
 	printArray(arr, 8);
 	return 0;
 }
