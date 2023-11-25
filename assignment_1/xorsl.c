@@ -46,6 +46,38 @@ struct Node *applySkip(struct Node *head) {
 	return applySkipPriv(head, NULL);
 }
 
+struct Node *removeIndexPriv(struct Node *head, struct Node *prev, unsigned int index, unsigned int pos) {
+	if(!head || index < pos) return NULL;
+	struct Node *temp = NULL;
+	if(index == pos) {
+		temp = xor(head->xor, prev);
+		if(prev) {
+			struct Node *prevPrev = xor(prev->xor, head);
+			prev->xor = xor(temp, prevPrev);
+			struct Node *tempNext = xor(head->xorSkip, prevPrev);
+			prev->xorSkip = xor(tempNext, xor(prev->xorSkip, temp));
+			if(prevPrev) prevPrev->xorSkip = xor(temp, xor(prevPrev->xorSkip, head));
+		}
+		if(temp) {
+			struct Node *tempNext = xor(temp->xor, head);
+			temp->xor = xor(tempNext, prev);
+			struct Node *prevPrev = xor(head->xorSkip, tempNext);
+			temp->xorSkip = xor(xor(temp->xorSkip, prev), prevPrev);
+			if(tempNext) tempNext->xorSkip = xor(xor(tempNext->xorSkip, head), prev);
+		}
+		free(head);
+		return temp;
+	}
+	if(prev) temp = xor(prev->xor, head);
+	temp = removeIndexPriv(xor(head->xorSkip, temp), xor(head->xor, prev), index, pos+2);
+	if(!temp) removeIndexPriv(xor(head->xor, prev), head, index, pos+1);
+	return head;
+}
+
+struct Node *removeIndex(struct Node *head, unsigned int index) {
+	return removeIndexPriv(head, NULL, index, 0);
+}
+
 void printList(struct Node *head) {
 	struct Node *prev = NULL, *temp;
 	while(head) {
@@ -62,7 +94,8 @@ void checkSkip(struct Node *head, struct Node *prev) {
 	while(head) {
 		if(prevTwo)
 			printf("%-3d <- ", prevTwo->value);
-		else printf("\t\b\b");
+		else if(head->value < 0) printf("\t\b\b");
+		else printf("\t\b");
 		printf("%d", head->value);
 		front = xor(head->xorSkip, prevTwo);
 		if(front)
@@ -92,6 +125,11 @@ int main() {
 	head = insert(head, 1);
 	printList(head);
 	applySkip(head);
+	checkSkip(head, NULL);
+	head = removeIndex(head, 0);
+	head = removeIndex(head, 3);
+	head = removeIndex(head, 9);
+	printList(head);
 	checkSkip(head, NULL);
 	return 0;
 }
