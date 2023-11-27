@@ -35,6 +35,37 @@ struct Node *insert(struct Node *head, int value) {
 	return insertPriv(head, NULL, value);
 }
 
+struct Node *insertV2Priv(struct Node *head, struct Node *prev, int value) {
+	if(!head) return createNode(value);
+	if(head->value >= value) {
+		struct Node *temp = createNode(value);
+		if(prev && prev->value >= value) {
+			struct Node *prevPrev = xor(prev->xor, head);
+			temp->xor = xor(prevPrev, prev);
+			prev->xor = xor(temp, head);
+			return temp;
+		}
+		head->xor = xor(xor(head->xor, prev), temp);
+		temp->xor = xor(head, prev);
+		if(prev) {
+			prev->xor = xor(temp, xor(prev->xor, head));
+			return prev;
+		}
+		return temp;
+	}
+	struct Node *next = xor(head->xor, prev);
+	if(next) next = xor(next->xor, head);
+	head->xor = insertV2Priv(next, xor(head->xor, prev), value);
+	if(!head->xor->xor) head->xor->xor = head;
+	head->xor = xor(head->xor, prev);
+	if(prev) return prev;
+	return head;
+}
+
+struct Node *insertV2(struct Node *head, int value) {
+	return insertV2Priv(head, NULL, value);
+}
+
 struct Node *applySkipPriv(struct Node *head, struct Node *prev) {
 	if(head == NULL) return NULL;
 	head->xorSkip = applySkipPriv(xor(head->xor, prev), head);
@@ -129,6 +160,15 @@ int main() {
 	head = removeIndex(head, 0);
 	head = removeIndex(head, 3);
 	head = removeIndex(head, 9);
+	printList(head);
+	checkSkip(head, NULL);
+	head = insertV2(head, 69);
+	head = insertV2(head, 2);
+	head = insertV2(head, -8);
+	head = insertV2(head, 9);
+	head = insertV2(head, 2);
+	head = insertV2(head, 1);
+	applySkip(head);
 	printList(head);
 	checkSkip(head, NULL);
 	return 0;
