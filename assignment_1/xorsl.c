@@ -36,7 +36,15 @@ struct Node *insert(struct Node *head, int value) {
 }
 
 struct Node *insertV2Priv(struct Node *head, struct Node *prev, int value) {
-	if(!head) return createNode(value);
+	if(!head) {
+		struct Node *temp = createNode(value);
+		if(prev) {
+			temp->xor = prev;
+			prev->xor = xor(prev->xor, temp);
+			return prev;
+		}
+		return temp;
+	}
 	if(head->value >= value) {
 		struct Node *temp = createNode(value);
 		if(prev && prev->value >= value) {
@@ -168,6 +176,8 @@ int main() {
 	head = insertV2(head, 9);
 	head = insertV2(head, 2);
 	head = insertV2(head, 1);
+	head = insertV2(head, 100);
+	head = insertV2(head, 1001);
 	applySkip(head);
 	printList(head);
 	checkSkip(head, NULL);
