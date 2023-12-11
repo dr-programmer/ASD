@@ -17,8 +17,8 @@ struct Node *createNode(int value) {
 
 struct Node *left(struct Node *node) {
 	struct Node *right = node->right;
+	node->right = right->left;
 	right->left = node;
-	node->right = NULL;
 	node->height = node->left != NULL ? node->left->height + 1 : 1;
 	int temp = right->right != NULL ? right->right->height : 0;
 	right->height = node->height > temp ? node->height + 1 : temp + 1;
@@ -27,8 +27,8 @@ struct Node *left(struct Node *node) {
 
 struct Node *right(struct Node *node) {
 	struct Node *left = node->left;
+	node->left = left->right;
 	left->right = node;
-	node->left = NULL;
 	node->height = node->right != NULL ? node->right->height + 1 : 1;
 	int temp = left->left != NULL ? left->left->height : 0;
 	left->height = node->height > temp ? node->height + 1 : temp + 1;
