@@ -89,8 +89,15 @@ int count(struct Node *head) {
 	return 1 + count(head->left) + count(head->right);
 }
 
-int isBalanced(struct Node *head) {
-	return (int)log2(count(head)) + 1 == depth(head);
+int isBalanced(struct Node *head, int depth, int height) {
+	if(!head) {
+		if(depth == height) return -1;
+		else return 0;
+	}
+	int leftH = isBalanced(head->left, depth+1, height);
+	int rightH = isBalanced(head->right, depth+1, height);
+	if(leftH != rightH) return 0;
+	return fmax(leftH, rightH) + 1;
 }
 
 int main() {
@@ -104,14 +111,17 @@ int main() {
 	head = push(head, 2);
 	head = push(head, 9);
 	head = push(head, 3);
+	head = push(head, 2);
+	head = push(head, 3);
+	head = push(head, 5);
 	printf("Depth: %d \n", depth(head));
 	printTreeB(head, 0);
-	//while(!isBalanced(head)) head = balance(head);
-	head = balance(head);
-	head = balance(head);
-	head = balance(head);
+	while(!isBalanced(head, 0, depth(head))) head = balance(head);
+	//head = balance(head);
+	//head = balance(head);
+	//head = balance(head);
 	printf("%d \n", count(head));
-	printf("Is balanced: %d", isBalanced(head));
+	printf("Is balanced: %d", isBalanced(head, 0, depth(head)));
 	printf("\n\n\n");
 	printTreeB(head, 0);
 	return 0;
