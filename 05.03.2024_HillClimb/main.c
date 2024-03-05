@@ -245,18 +245,11 @@ struct Dnode *bestFS(struct Node *node, struct Pnode *queue, struct Node *search
 
 #include <math.h>
 
-char heuristic(struct Node *start, struct Node *dest) {
+int heuristic(struct Node *start, struct Node *dest) {
 	if(!start || !dest) return 0;
-	if(start->coord.h) return 0;
-	if(start == dest) return 1;
 	int lenx = dest->coord.x - start->coord.x;
 	int leny = dest->coord.y - start->coord.y;
-	start->coord.h = sqrt((lenx * lenx) + (leny * leny));
-	for(int i = 0; i < start->e_size; i++) {
-		int check = heuristic(start->edges[i].node, dest);
-		if(check) break;
-	}
-	return 1;
+	return sqrt((lenx * lenx) + (leny * leny));
 }
 
 struct Dnode *pushD(struct Dnode *ordered, struct Node *node) {
@@ -287,7 +280,7 @@ struct Dnode *hillClimb(struct Node *node, struct Node *visited[], struct Node *
 	visited[index] = node;
 	struct Dnode *ordered = NULL;
 	for(int i = 0; i < node->e_size; i++) {
-		heuristic(node->edges[i].node, search);
+		node->edges[i].node->coord.h = heuristic(node->edges[i].node, search);
 		ordered = pushD(ordered, node->edges[i].node);
 	}
 	while(ordered) {
