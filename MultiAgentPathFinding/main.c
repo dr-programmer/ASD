@@ -27,7 +27,7 @@ struct Position {
 
 struct StepsList {
 	struct Position *position;
-	struct Path *next;
+	struct StepsList *next;
 };
 
 struct Position *createPosition(unsigned int currX, unsigned int currY, unsigned int tarX, unsigned int tarY) {
@@ -36,6 +36,13 @@ struct Position *createPosition(unsigned int currX, unsigned int currY, unsigned
 	temp->current.y = currY;
 	temp->target.x = tarX;
 	temp->target.y = tarY;
+	return temp;
+}
+
+struct StepsList *createStepsList(struct Position *pos, struct Position *par) {
+	struct StepsList *temp = (struct StepsList *)calloc(1, sizeof(struct StepsList));
+	temp->position = pos;
+	if(temp->position) temp->position->par = par;
 	return temp;
 }
 
@@ -67,82 +74,109 @@ struct Position **findAgents(char (*maze)[MAX_COLUMN_SIZE], unsigned int rows, u
 											POS->target.x, \
 											POS->target.y); 
 
-unsigned int heuristic(struct Coords current, struct Coords target) {
-	unsigned int xLen = target.x - current.x;
-	unsigned int yLen = target.y - current.y;
-	return sqrt((xLen * xLen) + (yLen * yLen));
+struct StepsList *pushStep(struct StepsList *list, struct Position *position, struct Position *par) {
+	if(!list) return createStepsList(position, par);
+	list->next = pushStep(list->next, position, par);
+	return list;
 }
 
-struct Coords *sortSteps(char (*maze)[MAX_COLUMN_SIZE], 
+struct StepsList *pushSteps(struct StepsList *list, 
+			char (*maze)[MAX_COLUMN_SIZE], 
 			unsigned int rows, 
 			unsigned int columns, 
 			struct Position *agent)
 {
 	if(!maze || !agent) return NULL;
-	struct Coords *result = (struct Coords *)calloc(4, sizeof(struct Coords));
-	int heuristics[5] = {-1, -1, -1, -1, -1}; // 0 - up; 1 - down; 2 - left; 3 - right; 4 - impossible
-	if(agent->current.x > 0) 
-		heuristics[0] = heuristic((struct Coords){agent->current.x-1, agent->current.y}, agent->target);
-	if(agent->current.x+1 < rows) 
-		heuristics[1] = heuristic((struct Coords){agent->current.x+1, agent->current.y}, agent->target);
-	if(agent->current.y > 0) 
-		heuristics[2] = heuristic((struct Coords){agent->current.x, agent->current.y-1}, agent->target);
-	if(agent->current.y+1 < columns) 
-		heuristics[3] = heuristic((struct Coords){agent->current.x, agent->current.y+1}, agent->target);
 
-	unsigned int sortedStepsPattern[4] = {0, 1, 2, 3};
-	for(unsigned int i = 0; i < 4; i++) {
-		for(unsigned int j = 0; j < 3; j++) {
-			if((heuristics[sortedStepsPattern[j]] == -1 
-			|| heuristics[sortedStepsPattern[j]] > heuristics[sortedStepsPattern[j+1]])
-			&& heuristics[sortedStepsPattern[j+1]] != -1) {
-				//printf("Heuristic = %d \n", heuristics[sortedStepsPattern[j]]);
-				if(heuristics[sortedStepsPattern[j]] == -1) {
-					sortedStepsPattern[j] = 4;
-				}
-				unsigned int temp = sortedStepsPattern[j];
-				sortedStepsPattern[j] = sortedStepsPattern[j+1];
-				sortedStepsPattern[j+1] = temp;
-			}
+	if(agent->current.x > 0 && maze[agent->current.x-1][agent->current.y] != '#' 
+	&& maze[agent->current.x-1][agent->current.y] != maze[agent->current.x][agent->current.y]) {
+		list = pushStep(list, 
+				createPosition(agent->current.x-1, 
+						agent->current.y, 
+						agent->target.x, 
+						agent->target.y), 
+				agent);
+		maze[agent->current.x-1][agent->current.y] = maze[agent->current.x][agent->current.y];
+	}
+	if(agent->current.x+1 < rows && maze[agent->current.x+1][agent->current.y] != '#' 
+	&& maze[agent->current.x+1][agent->current.y] != maze[agent->current.x][agent->current.y]) {
+		list = pushStep(list, 
+				createPosition(agent->current.x+1, 
+						agent->current.y, 
+						agent->target.x, 
+						agent->target.y), 
+				agent);
+		maze[agent->current.x+1][agent->current.y] = maze[agent->current.x][agent->current.y];
+	}
+	if(agent->current.y > 0 && maze[agent->current.x][agent->current.y-1] != '#' 
+	&& maze[agent->current.x][agent->current.y-1] != maze[agent->current.x][agent->current.y]) {
+		list = pushStep(list, 
+				createPosition(agent->current.x, 
+						agent->current.y-1, 
+						agent->target.x, 
+						agent->target.y), 
+				agent);
+		maze[agent->current.x][agent->current.y-1] = maze[agent->current.x][agent->current.y];
+	}
+	if(agent->current.y+1 < columns && maze[agent->current.x][agent->current.y+1] != '#' 
+	&& maze[agent->current.x][agent->current.y+1] != maze[agent->current.x][agent->current.y]) {
+		list = pushStep(list, 
+				createPosition(agent->current.x, 
+						agent->current.y+1, 
+						agent->target.x, 
+						agent->target.y), 
+				agent);
+		maze[agent->current.x][agent->current.y+1] = maze[agent->current.x][agent->current.y];
+	}
+
+	return list;
+}
+
+struct Position *findAgentPath(char (*maze)[MAX_COLUMN_SIZE], 
+				unsigned int rows, 
+				unsigned int columns, 
+				struct Position *agent)
+{
+	if(!maze || !agent) return NULL;
+	if(agent->current.x == agent->target.x && agent->current.y == agent->target.y) return agent;
+	struct StepsList *list = NULL;
+	list = pushSteps(list, maze, rows, columns, agent);
+	struct Position *result = NULL;
+	while(list) {
+		list = pushSteps(list, maze, rows, columns, list->position);
+		if(list->position->current.x == agent->target.x && list->position->current.y == agent->target.y) {
+			result = list->position;
+			break;
 		}
+		list = list->next;
 	}
-
-	for(unsigned int i = 0; i < 4; i++) {
-		if(sortedStepsPattern[i] == 0) 
-			result[i] = (struct Coords){agent->current.x-1, agent->current.y};
-		else if(sortedStepsPattern[i] == 1)
-			result[i] = (struct Coords){agent->current.x+1, agent->current.y};
-		else if(sortedStepsPattern[i] == 2) 
-			result[i] = (struct Coords){agent->current.x, agent->current.y-1};
-		else if(sortedStepsPattern[i] == 3) 
-			result[i] = (struct Coords){agent->current.x, agent->current.y+1};
-		else result[i] = (struct Coords){-1, -1};
-	}
-
 	return result;
 }
 
-void findAgentPath(char (*maze)[MAX_COLUMN_SIZE], unsigned int rows, unsigned int columns, struct Position *agent) {
-	if(!maze || !agent) return;
-	struct Coords *steps = sortSteps(maze, rows, columns, agent);
-	for(unsigned int i = 0; i < 4; i++) {
-		printf("x = %d; y = %d; ", steps[i].x, steps[i].y);
-	}
-	printf("\n");
-}
-
-struct Coords *findPaths(char (*maze)[MAX_COLUMN_SIZE], unsigned int rows, unsigned int columns) {
+struct Position **findPaths(char (*maze)[MAX_COLUMN_SIZE], unsigned int rows, unsigned int columns) {
 	if(!maze) return NULL;
 	struct Position **agents = findAgents(maze, rows, columns);
+
+	struct Position **results = (struct Position **)calloc(MAX_NUM_OF_AGENTS, sizeof(struct Position));
 
 	for(unsigned int i = 0; i < MAX_NUM_OF_AGENTS; i++) {
 		if(agents[i] == NULL) continue;
 		//PRINT_POSITION_STRUCT(agents[i]);
-
-		findAgentPath(maze, rows, columns, agents[i]);
+		maze[agents[i]->current.x][agents[i]->current.y] = '1' + i;
+		struct Position *result = findAgentPath(maze, rows, columns, agents[i]);
+		results[i] = result;
 	}
 
-	return NULL;
+	return results;
+}
+
+void copyMaze(char (*oMaze)[MAX_COLUMN_SIZE], char (*nMaze)[MAX_COLUMN_SIZE]) {
+	if(!oMaze) return;
+	for(unsigned int i = 0; i < MAX_ROW_SIZE; i++) {
+		for(unsigned int j = 0; j < MAX_COLUMN_SIZE; j++) {
+			nMaze[i][j] = oMaze[i][j];
+		}
+	}
 }
 
 void printMaze(char (*maze)[MAX_COLUMN_SIZE], unsigned int rows, unsigned int columns) {
@@ -156,6 +190,21 @@ void printMaze(char (*maze)[MAX_COLUMN_SIZE], unsigned int rows, unsigned int co
 		printf("|\n");
 	}
 	PRINT_HORIZONTAL_CANVAS(columns+2);
+}
+
+void printPaths(struct Position **results, char (*maze)[MAX_COLUMN_SIZE], unsigned int rows, unsigned int columns) {
+	if(!results) return;
+	for(unsigned int i = 0; i < MAX_NUM_OF_AGENTS; i++) {
+		char tMaze[MAX_ROW_SIZE][MAX_COLUMN_SIZE] = {0};
+		copyMaze(maze, tMaze);
+		struct Position *temp = results[i];
+		if(temp == NULL) continue;
+		while(temp) {
+			tMaze[temp->current.x][temp->current.y] = '1' + i;
+			temp = temp->par;
+		}
+		printMaze(tMaze, rows, columns);
+	}
 }
 
 int main() {
@@ -176,7 +225,13 @@ int main() {
 	}
 
 	printMaze(maze, rows, columns);
-	findPaths(maze, rows, columns);
+	char tempMaze[MAX_ROW_SIZE][MAX_COLUMN_SIZE] = {0};
+	copyMaze(maze, tempMaze);
+
+	struct Position **results = findPaths(tempMaze, rows, columns);
+	printPaths(results, maze, rows, columns);
+
+	printMaze(tempMaze, rows, columns);
 
 	fclose(file);
 	return 0;
