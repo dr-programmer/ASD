@@ -52,6 +52,12 @@ struct StepsList *createStepsList(struct Position *pos, struct Position *par) {
 	return temp;
 }
 
+struct StepsList *createStepsListWithoutPar(struct Position *pos) {
+	struct StepsList *temp = (struct StepsList *)calloc(1, sizeof(struct Position));
+	temp->position = pos;
+	return temp;
+}
+
 struct Position **findAgents(char (*maze)[MAX_COLUMN_SIZE], unsigned int rows, unsigned int columns) {
 	if(!maze) return NULL;
 	struct Position **result = (struct Position **)calloc(MAX_NUM_OF_AGENTS, sizeof(struct Position *));
@@ -138,6 +144,63 @@ struct StepsList *pushSteps(struct StepsList *list,
 	return list;
 }
 
+struct Position *pushCopyPosition(struct Position *head, struct Position *pos) {
+	if(!head) {
+		struct Position *temp = createPosition(pos->current.x, pos->current.y, pos->target.x, pos->target.y);
+		temp->waitTime = pos->waitTime;
+		temp->stepsToHere = pos->stepsToHere;
+		temp->stepsLeft = pos->stepsLeft;
+		return temp;
+	}
+	head->par = pushCopyPosition(head->par, pos);
+	return head;
+}
+
+struct Position *copyPositionChain(struct Position *pos) {
+	if(!pos) return NULL;
+	struct Position *result = NULL;
+	while(pos) {
+		result = pushCopyPosition(result, pos);
+		pos = pos->par;
+	}
+	return result;
+}
+
+struct StepsList *pushFreePosition(struct StepsList *head, struct Position *pos) {
+	if(!pos) return head;
+	if(!head) return createStepsListWithoutPar(pos);
+	if(head->position == pos) return head;
+	head->next = pushFreePosition(head->next, pos);
+	return head;
+}
+
+struct StepsList *createFreeList(struct StepsList *list) {
+	if(!list) return NULL;
+	struct StepsList *result = NULL;
+	result = createFreeList(list->next);
+	result = pushFreePosition(result, list->position);
+	return result;
+}
+
+void freeStepsListWithoutFields(struct StepsList *list) {
+	if(!list) return;
+	struct StepsList *next = list->next;
+	free(list);
+	freeStepsListWithoutFields(next);
+}
+
+void freeStepsList(struct StepsList *list) {
+	if(!list) return;
+	struct StepsList *freeList = createFreeList(list);
+	struct StepsList *oFreeList = freeList;
+	while(freeList) {
+		free(freeList->position);
+		freeList = freeList->next;
+	}
+	freeStepsListWithoutFields(oFreeList);
+	freeStepsListWithoutFields(list);
+}
+
 struct Position *findAgentPath(char (*maze)[MAX_COLUMN_SIZE], 
 				unsigned int rows, 
 				unsigned int columns, 
@@ -145,8 +208,9 @@ struct Position *findAgentPath(char (*maze)[MAX_COLUMN_SIZE],
 {
 	if(!maze || !agent) return NULL;
 	if(agent->current.x == agent->target.x && agent->current.y == agent->target.y) return agent;
-	struct StepsList *list = NULL;
+	struct StepsList *list = NULL, *oList = NULL;
 	list = pushSteps(list, maze, rows, columns, agent);
+	oList = list;
 	struct Position *result = NULL;
 	while(list) {
 		if(list->position->current.x == agent->target.x && list->position->current.y == agent->target.y) {
@@ -156,6 +220,11 @@ struct Position *findAgentPath(char (*maze)[MAX_COLUMN_SIZE],
 		list = pushSteps(list, maze, rows, columns, list->position);
 		list = list->next;
 	}
+
+	result = copyPositionChain(result);
+
+	freeStepsList(oList);
+
 	return result;
 }
 
@@ -172,6 +241,7 @@ struct Position **findPaths(char (*maze)[MAX_COLUMN_SIZE], unsigned int rows, un
 		struct Position *result = findAgentPath(maze, rows, columns, agents[i]);
 		results[i] = result;
 	}
+	free(agents);
 
 	return results;
 }
@@ -224,12 +294,6 @@ struct Position *getPosition(struct Position *pos, unsigned int x, unsigned int 
 	return result;
 }
 
-struct StepsList *createStepsListWithoutPar(struct Position *pos) {
-	struct StepsList *temp = (struct StepsList *)calloc(1, sizeof(struct Position));
-	temp->position = pos;
-	return temp;
-}
-
 struct StepsList *pushByStepsLeft(struct StepsList *list, struct Position *pos) {
 	if(!list) return createStepsListWithoutPar(pos);
 	if(list->position->stepsLeft < pos->stepsLeft) {
@@ -260,6 +324,7 @@ void addWait(struct Position **paths,
 									x, y);
 		}
 	}
+	free(factors);
 	if(!list) return;
 	struct StepsList *originalList = list, *par = list;
 	list = list->next;
@@ -305,23 +370,7 @@ void addWait(struct Position **paths,
 	}
 	printf("--- \n");
 
-	while(originalList) {
-		struct StepsList *next = originalList->next;
-		free(originalList);
-		originalList = next;
-	}
-}
-
-struct Position *pushCopyPosition(struct Position *head, struct Position *pos) {
-	if(!head) {
-		struct Position *temp = createPosition(pos->current.x, pos->current.y, pos->target.x, pos->target.y);
-		temp->waitTime = pos->waitTime;
-		temp->stepsToHere = pos->stepsToHere;
-		temp->stepsLeft = pos->stepsLeft;
-		return temp;
-	}
-	head->par = pushCopyPosition(head->par, pos);
-	return head;
+	freeStepsListWithoutFields(originalList);
 }
 
 struct Position *orientPath(struct Position *pos) {
@@ -411,6 +460,21 @@ void recalculateStepsLeft(struct Position *pos) {
 	}
 }
 
+void freePositionChain(struct Position *pos) {
+	if(!pos) return;
+	struct Position *par = pos->par;
+	free(pos);
+	freePositionChain(par);
+}
+
+void freePaths(struct Position **paths) {
+	if(!paths) return;
+	for(unsigned int i = 0; i < MAX_NUM_OF_AGENTS; i++) {
+		if(paths[i] == NULL) continue;
+		freePositionChain(paths[i]);
+	}
+}
+
 void findPathIntersections(struct Position **paths, 
 				unsigned int rows, 
 				unsigned int columns, 
@@ -475,6 +539,10 @@ void findPathIntersections(struct Position **paths,
 		}
 		first = 0;
 	}
+
+	freePaths(orientedPaths);
+	free(orientedPaths);
+	free(tempOPs);
 }
 
 void copyMaze(char (*oMaze)[MAX_COLUMN_SIZE], char (*nMaze)[MAX_COLUMN_SIZE]) {
@@ -519,8 +587,10 @@ void printSteps(struct Position **paths, char (*maze)[MAX_COLUMN_SIZE], unsigned
 	char tMaze[MAX_ROW_SIZE][MAX_COLUMN_SIZE] = {0};
 	copyMaze(maze, tMaze);
 	struct Position **tempPaths = (struct Position **)calloc(MAX_NUM_OF_AGENTS, sizeof(struct Position *));
+	struct Position **oTempPaths = (struct Position **)calloc(MAX_NUM_OF_AGENTS, sizeof(struct Position *));
 	for(unsigned int i = 0; i < MAX_NUM_OF_AGENTS; i++) {
 		tempPaths[i] = orientPath(paths[i]);
+		oTempPaths[i] = tempPaths[i];
 	}
 	unsigned int time = 0;
 	unsigned short loop = 1;
@@ -539,6 +609,10 @@ void printSteps(struct Position **paths, char (*maze)[MAX_COLUMN_SIZE], unsigned
 		printf("Time: %u s \n", time++);
 		printMaze(tMaze, rows, columns);
 	}
+
+	freePaths(oTempPaths);
+	free(oTempPaths);
+	free(tempPaths);
 }
 
 int main() {
@@ -557,6 +631,7 @@ int main() {
 			maze[rows][j-1] = row[j];
 		}
 	}
+	fclose(file);
 
 	printMaze(maze, rows, columns);
 	char tempMaze[MAX_ROW_SIZE][MAX_COLUMN_SIZE] = {0};
@@ -571,6 +646,6 @@ int main() {
 
 	printSteps(results, maze, rows, columns);
 
-	fclose(file);
+	freePaths(results);
 	return 0;
 }
