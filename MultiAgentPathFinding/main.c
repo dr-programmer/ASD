@@ -331,7 +331,7 @@ void addWait(struct Position **paths,
 		if(agentS && list->position->par) printf("Steps to here par = %u, less = %u , prevWl = %u \n",
 			       		par->position->stepsToHere, list->position->stepsToHere, 
 					list->position->par->waitTime);
-		int waitTime = (par->position->stepsToHere + par->position->timeAddon) - list->position->stepsToHere + 1;
+		int waitTime = (par->position->stepsToHere + par->position->timeAddon) - (list->position->stepsToHere + list->position->timeAddon) + 1;
 		if(list->position->par && list->position->par->dangerous) {
 			//list->position->stepsToHere -= list->position->par->waitTime;
 			list->position->par->waitTime = 0;
@@ -348,6 +348,7 @@ void addWait(struct Position **paths,
 				list->position->par->current.x, 
 				list->position->par->current.y, 
 				maze);
+				list->position->par->timeAddon = 0;
 			}
 			//if(agent6) printf("Here2 \n");
 		}
