@@ -647,5 +647,6 @@ int main() {
 	printSteps(results, maze, rows, columns);
 
 	freePaths(results);
+	free(results);
 	return 0;
 }
