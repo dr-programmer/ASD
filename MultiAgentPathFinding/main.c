@@ -28,7 +28,7 @@ struct Position {
 	unsigned int waitTime;
 	unsigned int stepsToHere;
 	unsigned short dangerous;
-	unsigned int dangerousStepsToHere;
+	unsigned int timeAddon;
 };
 
 struct StepsList {
@@ -289,7 +289,6 @@ struct Position *getPosition(struct Position *pos, unsigned int x, unsigned int 
 		temp = temp->par;
 	}
 	result->stepsToHere = stepsToHere;
-	result->dangerousStepsToHere = stepsToHere;
 	if(x == 3 && y == 2) printf("3 | 2 stepsToHere = %u \n", stepsToHere);
 	return result;
 }
@@ -332,24 +331,24 @@ void addWait(struct Position **paths,
 		if(agentS && list->position->par) printf("Steps to here par = %u, less = %u , prevWl = %u \n",
 			       		par->position->stepsToHere, list->position->stepsToHere, 
 					list->position->par->waitTime);
-		unsigned int parStepsToHere = par->position->par && par->position->par->dangerous 
-						? par->position->dangerousStepsToHere 
-						: par->position->stepsToHere;
-		int waitTime = parStepsToHere - list->position->stepsToHere + 1;
+		int waitTime = (par->position->stepsToHere + par->position->timeAddon) - list->position->stepsToHere + 1;
 		if(list->position->par && list->position->par->dangerous) {
 			//list->position->stepsToHere -= list->position->par->waitTime;
 			list->position->par->waitTime = 0;
-			list->position->par->dangerousStepsToHere = waitTime + 1;
+			list->position->par->stepsToHere = waitTime + 1;
 			//if(agent6) printf("Here1 \n");
 		}
 		else if(waitTime > 0 && list->position->par) {
 			list->position->stepsToHere += waitTime;
 			list->position->par->waitTime += waitTime;
-			if(par->position->par->stepsToHere >= list->position->par->stepsToHere) addWait(paths, 
+			if(par->position->par->stepsToHere >= list->position->par->stepsToHere) {
+				if(waitTime > 1) list->position->par->timeAddon += 1;
+				addWait(paths, 
 				getFactors(maze[list->position->par->current.x][list->position->par->current.y]), 
 				list->position->par->current.x, 
 				list->position->par->current.y, 
 				maze);
+			}
 			//if(agent6) printf("Here2 \n");
 		}
 		else if(list->position->par && waitTime + list->position->par->waitTime <= 1) {
